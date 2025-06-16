@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template_string, redirect
 import requests
 import openai
 import firebase_admin
@@ -76,6 +76,50 @@ def store_in_firebase(url, snapshot_url, ai_reconstruction):
     }
 
     db.collection("archived_pages").add(record)
+
+@app.route("/reconstruct")
+def reconstruct():
+    original_url = request.args.get("url")
+
+    if not original_url:
+        return "Missing URL parameter", 400
+
+    # Search for matching document
+    docs = db.collection("archived_pages").where("url", "==", original_url).stream()
+
+    doc = next(docs, None)
+    if not doc:
+        return "No record found for this URL", 404
+
+    data = doc.to_dict()
+
+    # If Wayback snapshot exists, redirect user
+    if data.get("snapshot_url"):
+        return redirect(data["snapshot_url"])
+
+    # If AI reconstruction is available, serve it
+    if data.get("ai_reconstruction") and data["ai_reconstruction"] != "AI reconstruction failed.":
+        html = data["ai_reconstruction"]
+
+        full_page = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>AI Reconstructed Page</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }}
+                .notice {{ font-size: 12px; color: #666; margin-bottom: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class="notice">This page was reconstructed using AI because no archive was available.</div>
+            {html}
+        </body>
+        </html>
+        """
+        return render_template_string(full_page)
+
+    return "No reconstruction available for this URL", 404
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
