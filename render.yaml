@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ai-web-archiver-backend
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: "python backend_server.py"
