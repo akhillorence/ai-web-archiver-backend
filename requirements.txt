@@ -2,3 +2,6 @@ flask
 requests
 openai
 firebase-admin
+nltk
+rouge-score
+beautifulsoup4
